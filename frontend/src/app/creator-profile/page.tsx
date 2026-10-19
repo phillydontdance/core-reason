@@ -1,15 +1,36 @@
 'use client';
 
 import { FormEvent, useState } from 'react';
+import { apiFetch } from '../../lib/api';
 
 export default function CreatorProfilePage() {
   const [username, setUsername] = useState('niabcreative');
   const [monthlyPrice, setMonthlyPrice] = useState('1500');
   const [bio, setBio] = useState('Lifestyle, behind-the-scenes content, and rituals from my everyday creative life in Nairobi.');
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState('');
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    console.log({ username, monthlyPrice, bio });
+    setLoading(true);
+    setMessage('');
+
+    try {
+      await apiFetch('/profile/me', {
+        method: 'POST',
+        body: JSON.stringify({
+          username,
+          displayName: username,
+          bio,
+          monthlyPrice: Number(monthlyPrice),
+        }),
+      });
+      setMessage('Profile saved successfully');
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : 'Failed to save profile');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -39,9 +60,11 @@ export default function CreatorProfilePage() {
             <textarea id="bio" className="textarea" rows={5} value={bio} onChange={(e) => setBio(e.target.value)} />
           </div>
 
+          {message && <div style={{ color: '#1f1f1f', fontWeight: 600 }}>{message}</div>}
+
           <div className="form-actions">
             <span style={{ color: '#6f6a67' }}>Fans will see public previews and your membership plan.</span>
-            <button className="primary-button" type="submit">Save profile</button>
+            <button className="primary-button" type="submit" disabled={loading}>{loading ? 'Saving...' : 'Save profile'}</button>
           </div>
         </form>
       </div>

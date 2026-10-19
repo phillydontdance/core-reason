@@ -1,14 +1,39 @@
 'use client';
 
+import Link from 'next/link';
 import { FormEvent, useState } from 'react';
+import { apiFetch } from '../../lib/api';
 
 export default function SignInPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    console.log({ email, password });
+    setLoading(true);
+    setError('');
+
+    try {
+      const result = await apiFetch<{ token: string; user: { id: string; role: 'creator' | 'fan'; name: string; email: string } }>('/auth/signin', {
+        method: 'POST',
+        body: JSON.stringify({ email, password }),
+      });
+
+      localStorage.setItem('fanhaven_token', result.token);
+      localStorage.setItem('fanhaven_user', JSON.stringify(result.user));
+
+      if (result.user.role === 'creator') {
+        window.location.href = '/dashboard';
+      } else {
+        window.location.href = '/feed';
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Sign in failed');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -29,9 +54,11 @@ export default function SignInPage() {
             <input id="password" className="input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" />
           </div>
 
+          {error && <div style={{ color: '#b11a1a', fontWeight: 600 }}>{error}</div>}
+
           <div className="form-actions">
-            <a className="linkish" href="/signup">Create account</a>
-            <button className="primary-button" type="submit">Sign in</button>
+            <Link className="linkish" href="/signup">Create account</Link>
+            <button className="primary-button" type="submit" disabled={loading}>{loading ? 'Signing in...' : 'Sign in'}</button>
           </div>
         </form>
       </div>

@@ -1,15 +1,36 @@
 'use client';
 
 import { FormEvent, useState } from 'react';
+import { apiFetch } from '../../lib/api';
 
 export default function UploadPage() {
   const [title, setTitle] = useState('Exclusive behind-the-scenes reel');
   const [kind, setKind] = useState<'image' | 'video'>('video');
   const [visibility, setVisibility] = useState<'public' | 'paid'>('paid');
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState('');
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    console.log({ title, kind, visibility });
+    setLoading(true);
+    setMessage('');
+
+    try {
+      const result = await apiFetch<{ uploadUrl: string; objectKey: string; publicUrl?: string }>('/content/upload-url', {
+        method: 'POST',
+        body: JSON.stringify({
+          kind,
+          fileName: `${title.toLowerCase().replace(/\s+/g, '-')}.${kind === 'video' ? 'mp4' : 'jpg'}`,
+          mimeType: kind === 'video' ? 'video/mp4' : 'image/jpeg',
+        }),
+      });
+
+      setMessage(`Upload ready: ${result.objectKey}. In production this would upload directly to R2 using the signed URL.`);
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : 'Failed to generate upload URL');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -42,9 +63,11 @@ export default function UploadPage() {
             </select>
           </div>
 
+          {message && <div style={{ color: '#1f1f1f', fontWeight: 600 }}>{message}</div>}
+
           <div className="form-actions">
             <span style={{ color: '#6f6a67' }}>Signed URLs keep paid media from being guessable.</span>
-            <button className="primary-button" type="submit">Generate upload link</button>
+            <button className="primary-button" type="submit" disabled={loading}>{loading ? 'Preparing...' : 'Generate upload link'}</button>
           </div>
         </form>
       </div>
